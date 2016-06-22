@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>International Migrations</title>
+
+    <meta charset="UTF-8">
+
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dc/1.7.5/dc.min.css"/>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="row">
+
+    <h2>International migrations to the US by year</h2>
+
+    <p>
+        This visualization shows the number of people migrating into the US by state and year from 2010 to 2015. Click on a state or a year to filter it.
+    </p>
+    
+  </div>
+  
+  <div class="row">
+    <strong>Migration by state</strong> (color: number of migrations). Try clicking on states.
+    <a href="javascript:dc.filterAll(); dc.renderAll();">Reset All</a>
+  </div>
+  <div class="row">
+    <div class="col-xs-8">
+      <div id="us-chart">
+        <div class="row">
+          <a class="reset" href="javascript:usChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+          <span class="reset" style="display: none;"> | Current filter: <span class="filter"></span></span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="row">
+
+    <strong>By Year</strong> (y: number of migrations, x: year). Try clicking on years.
+    <div class="col-xs-8 col-xs-offset-3">
+      <div id="year-chart">
+        <div class="row">
+          <a class="reset" href="javascript:yearChart.filterAll();dc.redrawAll();" style="display: none;">reset</a>
+          <span class="reset" style="display: none;"> | Current filter: <span class="filter"></span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/crossfilter/1.3.12/crossfilter.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/dc/1.7.5/dc.min.js"></script>
+<script type="text/javascript">
+    var numberFormat = d3.format(".2f");
+
+    var usChart = dc.geoChoroplethChart("#us-chart");
+    var yearChart = dc.barChart("#year-chart");
+
+    d3.csv("data/migration_cleaned.csv", function (csv) {
+        data = crossfilter(csv);
+
+        var state = data.dimension(function (d) {
+            return d["state"];
+        });
+        
+        var sumByState = state.group().reduceSum(function (d) {
+            return parseInt(d.migration, 10);
+        });
+      
+        var year = data.dimension(function (d) {
+            return d["year"];
+        });
+      
+        var sumByYear = year.group().reduceSum(function (d) {
+            return parseInt(d.migration, 10);
+        });
+
+
+        d3.json("data/us-states.json", function (statesJson) {
+          
+          usChart.width(900)
+            .height(500)
+            .dimension(state)
+            .group(sumByState)
+            .colors(d3.scale.quantize().domain([8, 13]).range(["#E2F2FF", "#C4E4FF", "#9ED2FF", "#81C5FF", "#6BBAFF", "#51AEFF", "#36A2FF", "#1E96FF", "#0089FF", "#0061B5"]))
+            .colorDomain([8, 13])
+            .colorCalculator(function (d) { return d ? usChart.colors()(Math.log(d)) : '#ccc'; })
+            .overlayGeoJson(statesJson.features, "state", function (d) {
+                return d.properties.name;
+            })
+            .title(function (d) {
+                return "State: " + d.key + "\nTotal: " + d.value;
+            });
+          
+          yearChart.width(500)
+            .height(300)
+            .margins({top:30, right: 50, bottom: 30, left: 60})
+            .dimension(year)
+            .group(sumByYear)
+            .x(d3.scale.ordinal())
+            .xUnits(dc.units.ordinal)
+            .renderHorizontalGridLines(true)
+            .centerBar(true)
+            .elasticY(true)
+            .brushOn(false)
+            .title(function(d){
+                return d.data.key + "\nTotal migrations: " + d.data.value;
+            });
+
+            dc.renderAll();
+        });
+    });
+</script>
+
+
+</body>
+</html>
